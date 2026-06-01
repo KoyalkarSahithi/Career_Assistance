@@ -64,25 +64,43 @@ TEMPLATES = [{
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
-db_engine = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
-if 'sqlite' in db_engine:
+# If DATABASE_URL is set (production/Supabase), parse and use it.
+# Otherwise fall back to SQLite for local development.
+_db_url = os.getenv('DATABASE_URL')
+if _db_url:
+    import urllib.parse as _urlparse
+    _u = _urlparse.urlparse(_db_url)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / os.getenv('DB_NAME', 'db.sqlite3'),
+            'ENGINE':   'django.db.backends.postgresql',
+            'NAME':     _u.path.lstrip('/'),
+            'USER':     _u.username,
+            'PASSWORD': _u.password,
+            'HOST':     _u.hostname,
+            'PORT':     str(_u.port or 5432),
+            'OPTIONS':  {'sslmode': 'require'},
         }
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': db_engine,
-            'NAME':     os.getenv('DB_NAME'),
-            'USER':     os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST':     os.getenv('DB_HOST', 'localhost'),
-            'PORT':     os.getenv('DB_PORT', '5432'),
+    db_engine = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+    if 'sqlite' in db_engine:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / os.getenv('DB_NAME', 'db.sqlite3'),
+            }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE':   db_engine,
+                'NAME':     os.getenv('DB_NAME'),
+                'USER':     os.getenv('DB_USER'),
+                'PASSWORD': os.getenv('DB_PASSWORD'),
+                'HOST':     os.getenv('DB_HOST', 'localhost'),
+                'PORT':     os.getenv('DB_PORT', '5432'),
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
